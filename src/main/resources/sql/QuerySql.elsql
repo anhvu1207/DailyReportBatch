@@ -1,0 +1,324 @@
+@NAME(GET_COMPANY_INFO) --use get company  info from res_company
+  SELECT rc.id, rc.name, rc.company_registry, rc.phone, rc.email ,
+  rp.city ,rp.street, rp.street2 , rp.fx_street3 , rp.zip
+  FROM res_company as rc
+  LEFT JOIN res_partner as rp on rp.id = rc.partner_id
+  WHERE rc.id = :company_id
+
+@NAME(GET_FRONT_DATE)
+ SELECT front_date
+ FROM st_app_date
+ WHERE company_id = :company_id
+ AND date_key = 'F' and exchange_code = 'NYSE'
+
+
+@NAME(GET_REPORT_DATE)
+  SELECT front_date FROM st_exchange_calendar
+  WHERE front_date < :frontDate
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND exchange_sname = 'TSE'
+  AND company_id = :company_id
+  ORDER BY front_date DESC
+  LIMIT 1
+
+@NAME(GET_ALL_ACCOUNT_ACTIVE)
+  SELECT frp.login_id, rp.name, frp.buten_cd,
+  frpt.base_currency_cd, frp.st_account_category
+  FROM fx_res_partner AS frp
+  INNER JOIN res_partner AS rp ON rp.id = frp.partner_id
+  INNER JOIN fx_res_partner_trading AS frpt ON frpt.trading_account_id = frp.login_id
+  WHERE frpt.status is not NULL
+  AND (frpt.status NOT IN ('3', '4', '7') OR (frpt.status = '4' AND rp.status_closed_date = :report_date))
+  AND frpt.demo_flg = 'F'
+  AND frpt.company_id = :company_id
+  ORDER BY frp.login_id ASC
+---------------------------------------------------------------------------------------
+@NAME(GET_TRANSACTION_DETAILS)
+  SELECT sdc.trading_account_id,sdc.order_id , sdc.trade_date , sdc.settle_date , sdc.ticker_code ,
+  st.ticker_name, sdc.side ,sdc.account_category,
+  sdc.order_qty , sdc.order_price , sdc.fee_trading , sdc.tax,
+  CASE WHEN sdc.side = '1' THEN (sdc.order_qty * sdc.order_price + sdc.fee_trading + sdc.tax) -- 1: BUY
+  WHEN sdc.side = '2' THEN (sdc.order_qty * sdc.order_price - sdc.fee_trading - sdc.tax) -- 2: SELL
+  ELSE 0 END statement_amount
+  FROM st_daily_contract as sdc
+  INNER JOIN st_ticker AS st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.company_id = :company_id
+  and sdc.exchange = 'TSE'
+  and sdc.trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '11'
+  ORDER BY sdc.order_id ASC
+
+@NAME(GET_TRANSACTION_DETAILS_NYSE)
+  SELECT sdc.trading_account_id,sdc.order_id , sdc.trade_date , sdc.settle_date , sdc.ticker_code ,
+  st.ticker_name, sdc.side ,sdc.account_category,
+  sdc.order_qty , sdc.order_price , sdc.fee_trading , sdc.tax,
+  CASE WHEN sdc.side = '1' THEN (sdc.order_qty * sdc.order_price + sdc.fee_trading + sdc.tax) -- 1: BUY
+  WHEN sdc.side = '2' THEN (sdc.order_qty * sdc.order_price - sdc.fee_trading - sdc.tax) -- 2: SELL
+  ELSE 0 END statement_amount
+  FROM st_daily_contract as sdc
+  INNER JOIN st_ticker AS st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.company_id = :company_id
+  and sdc.exchange in ('NYSE' ,'NASD')
+  and sdc.trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '12'
+  ORDER BY sdc.order_id ASC
+
+@NAME(GET_TRANSACTION_DETAILS_SEHK)
+  SELECT sdc.trading_account_id,sdc.order_id , sdc.trade_date , sdc.settle_date , sdc.ticker_code ,
+  st.ticker_name, sdc.side ,sdc.account_category,
+  sdc.order_qty , sdc.order_price , sdc.fee_trading , sdc.tax,
+  CASE WHEN sdc.side = '1' THEN (sdc.order_qty * sdc.order_price + sdc.fee_trading + sdc.tax) -- 1: BUY
+  WHEN sdc.side = '2' THEN (sdc.order_qty * sdc.order_price - sdc.fee_trading - sdc.tax) -- 2: SELL
+  ELSE 0 END statement_amount
+  FROM st_daily_contract as sdc
+  INNER JOIN st_ticker AS st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.company_id = :company_id
+  and sdc.exchange = 'SEHK'
+  and sdc.trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '13'
+  ORDER BY sdc.order_id ASC
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T0)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract as sdc
+  WHERE RIGHT(sdc.trading_account_id, 2) = '11'
+  AND company_id = :company_id
+  AND exchange = 'TSE'
+  AND account_category in ('20','21')
+  AND trade_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T2)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract_settlement as sdcs
+  WHERE RIGHT(sdcs.trading_account_id, 2) = '11'
+  AND company_id = :company_id
+  AND exchange = 'TSE'
+  AND account_category in ('20','21')
+  AND settle_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T0_NYSE)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract as sdc
+  WHERE RIGHT(sdc.trading_account_id, 2) = '12'
+  AND company_id = :company_id
+  AND sdc.exchange in ('NYSE' ,'NASD')
+  AND account_category in ('20','21')
+  AND trade_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T2_NYSE)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract_settlement as sdcs
+  WHERE RIGHT(sdcs.trading_account_id, 2) = '12'
+  AND company_id = :company_id
+  AND exchange in ('NYSE' ,'NASD')
+  AND account_category in ('20','21')
+  AND settle_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T0_SEHK)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract as sdc
+  WHERE RIGHT(sdc.trading_account_id, 2) = '13'
+  AND company_id = :company_id
+  AND sdc.exchange = 'SEHK'
+  AND account_category in ('20','21')
+  AND trade_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T2_SEHK)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract_settlement as sdcs
+  WHERE RIGHT(sdcs.trading_account_id, 2) = '13'
+  AND company_id = :company_id
+  AND exchange = 'SEHK'
+  AND account_category in ('20','21')
+  AND settle_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_PL_OF_TRANSACTION_ON_T0_MARGIN)
+  SELECT trading_account_id, SUM (realized_pl) as realized_pl
+  FROM st_daily_contract as sdc
+  WHERE RIGHT(sdc.trading_account_id, 2) = '14'
+  AND company_id = :company_id
+  AND sdc.exchange = 'TSE'
+  AND account_category in ('20','21')
+  AND trade_date = :report_date
+  GROUP BY trading_account_id
+
+@NAME(GET_EXCHANGE_RATE_USD_JPY)
+  SELECT mid from fx_exchange_rate
+  WHERE symbol = 'USDJPY'
+
+@NAME(GET_EXCHANGE_RATE_HKD_JPY)
+  SELECT mid from fx_exchange_rate
+  WHERE symbol = 'HKDJPY'
+
+@NAME(GET_FRONT_DATE_T2_MAIN_AND_MARGIN_ACCOUNT)
+  SELECT front_date
+  FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND company_id = :company_id
+  AND exchange_sname = 'TSE'
+  ORDER BY front_date desc
+  LIMIT 1
+  offset 1
+
+@NAME(GET_FRONT_DATE_NYSE_ACCOUNT)
+  SELECT front_date
+  FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND company_id = :company_id
+  AND exchange_sname = 'NYSE'
+  ORDER BY front_date desc
+  LIMIT 1
+  offset 1
+
+@NAME(GET_FRONT_DATE_T2_HKSE_ACCOUNT)
+  SELECT front_date
+  FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND company_id = :company_id
+  AND exchange_sname = 'SEHK'
+  ORDER BY front_date desc
+  LIMIT 1
+  offset 1
+
+@NAME(GET_WITHHOLDING_TAX_RATE)
+  SELECT amount
+  FROM account_tax
+  WHERE country_code = 'JP'
+  AND tax_group_id = '6'
+  AND company_id = :company_id
+  AND country_code = 'JP'
+
+
+@NAME(PAYMENT_AMOUNT_TSE)
+  SELECT total_buy_executed_amt, total_sell_executed_amt ,trading_account_id
+  FROM st_daily_account_summary
+  WHERE right(trading_account_id, 2) = '11'
+  AND company_id = :company_id
+  AND value_date = :prevFrontDate
+  AND t_plus =0
+
+@NAME(PAYMENT_AMOUNT_NYSE)
+  SELECT total_buy_executed_amt, total_sell_executed_amt ,trading_account_id
+  FROM st_daily_account_summary
+  WHERE right(trading_account_id, 2) = '12'
+  AND company_id = :company_id
+  AND value_date = :prevFrontDate
+  AND t_plus =0
+
+@NAME(PAYMENT_AMOUNT_SEHK)
+  SELECT total_buy_executed_amt, total_sell_executed_amt ,trading_account_id
+  FROM st_daily_account_summary
+  WHERE right(trading_account_id, 2) = '13'
+  AND company_id = :company_id
+  AND value_date = :prevFrontDate
+  AND t_plus =0
+
+@NAME(TRANSACTION_DETAIL_MARGIN_ACCOUNT)
+  SELECT a.* from
+  (
+  SELECT sdc.order_id  , sdc.ticker_code , st.ticker_name , sdc.side ,
+  sdc.order_qty  , sdc.trade_date   , sdc.settle_date  ,  sdc.order_price  ,
+  sdc.fee_trading  , sdc.tax  , sdc.fee_loan  , sdc.fee_lending + sdc.fee1 as stock_lending_fee  ,
+  sdc.fee_transfer + sdc.fee_admin  as transfer_fee ,sdc.order_qty * sdc.order_price as amount,  sdc.adjust_dividend_cash,sdc.order_id as position_id, sdc.trading_account_id
+  FROM st_daily_contract  sdc
+  INNER JOIN st_ticker as st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.side in ('3','4')
+  AND sdc.company_id = :company_id
+  AND sdc.exchange = 'TSE'
+  AND sdc.trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '14'
+
+  union
+
+  SELECT sdc.order_id   , sdc.ticker_code  , st.ticker_name  , sdc.side ,
+  sdc.order_qty  , sdc.trade_date   , sdc.settle_date  ,  sdc.order_price  ,
+  sdc.fee_trading  , sdc.tax  , sdc.fee_loan  , sdc.fee_lending + sdc.fee1 as stock_lending_fee ,
+  sdc.fee_transfer + sdc.fee_admin as transfer_fee , sdc.order_qty * sdc.order_price as amount , sdc.adjust_dividend_cash  , sdc.position_id , sdc.trading_account_id
+  FROM st_daily_contract  sdc
+  INNER JOIN st_ticker as st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.side in ('6','7')
+  and sdc.company_id = :company_id
+  and sdc.exchange = 'TSE'
+  and sdc.trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '14'
+
+
+  union
+
+  SELECT sdc.order_id   , sdc.ticker_code  , st.ticker_name  , sdc.side,
+  sdc.order_qty  , sdc.trade_date   , sdc.settle_date  ,  sdc.order_price ,
+  sdc.fee_trading  , sdc.tax  , sdc.fee_loan , sdc.fee_lending + sdc.fee1 as stock_lending_fee ,
+  sdc.fee_transfer + sdc.fee_admin as transfer_fee, sdc.order_qty * sdc.order_price as amount , sdc.adjust_dividend_cash, sdc.order_id as position_id, sdc.trading_account_id
+  FROM st_daily_contract  sdc
+  INNER JOIN st_ticker as st ON st.id = sdc.ticker_id
+  WHERE
+  sdc.position_id in (select position_id
+  from st_daily_contract
+  where side in ('6','7') and company_id = :company_id
+  and exchange = 'TSE'
+  and trade_date = :report_date
+  and RIGHT(sdc.trading_account_id, 2) = '14')
+  )
+  as a ORDER BY a.trading_account_id, a.position_id, a.side
+
+@NAME(FEE_OF_CLOSE)
+  select sum(fee_trading+fee_loan+fee_lending+tax+fee_transfer+fee_admin+fee1+fee2+adjust_dividend_cash) as fee_trading , sdc.trading_account_id from st_daily_contract sdc
+  where RIGHT(trading_account_id, 2) = '14' and side in ('6','7') and trade_date = :report_date
+  group by trading_account_id ;
+
+@NAME(FEE_OF_OPEN)
+  select sum(fee_trading) , trading_account_id from st_daily_contract
+  where RIGHT(trading_account_id, 2) = '14'
+  and position_id in (select position_id from st_daily_contract where RIGHT(trading_account_id, 2) = '14' and side in ('6','7') and trade_date = :report_date )
+  group by trading_account_id
+
+@NAME(TSE_PREV_BIZ_DATE)
+  SELECT front_date FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND exchange_sname = 'TSE'
+  AND company_id = :company_id
+  ORDER BY front_date DESC
+  LIMIT 1
+
+@NAME(NYSE_PREV_BIZ_DATE)
+  SELECT front_date FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND exchange_sname = 'NYSE'
+  AND company_id = :company_id
+  ORDER BY front_date DESC
+  LIMIT 1
+
+@NAME(HK_PREV_BIZ_DATE)
+  SELECT front_date FROM st_exchange_calendar
+  WHERE front_date < :report_date
+  AND national_holiday_flg = false
+  AND holiday_flg = false
+  AND exchange_sname = 'SEHK'
+  AND company_id = :company_id
+  ORDER BY front_date DESC
+  LIMIT 1
+@NAME(REALIZED_PL_PREV_BIZ_DATE)
+  select realized_pl from st_gmo_admin_accountfilter
+  where trading_acct = :login_id and cast(create_date as date) = :date

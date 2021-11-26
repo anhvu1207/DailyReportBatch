@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.16.0.final using JasperReports Library version 6.16.0-48579d909b7943b64690c65c71e07e0b80981928  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="demoProject" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="442078e4-dbfe-484c-8d4b-438336c337ba">
+	<subDataset name="ItemDataset" uuid="38f8e20f-6121-46c3-81da-74ff4e8deacc">
+		<queryString>
+			<![CDATA[]]>
+		</queryString>
+		<field name="id" class="java.lang.Long"/>
+		<field name="exchangeId" class="java.lang.Integer"/>
+		<field name="companyId" class="java.lang.Integer"/>
+		<field name="exchangeSname" class="java.lang.String"/>
+	</subDataset>
+	<parameter name="ItemDataSource" class="java.util.List"/>
+	<queryString>
+		<![CDATA[]]>
+	</queryString>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="477" splitType="Stretch">
+			<componentElement>
+				<reportElement x="8" y="90" width="490" height="30" uuid="2442910a-5b3d-41e3-a4e6-fa28f370b66d"/>
+				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="ItemDataset" uuid="2cbaa966-c826-44fb-a011-a91ef19cd2ab">
+						<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($P{ItemDataSource})]]></dataSourceExpression>
+					</datasetRun>
+					<jr:listContents height="30" width="490">
+						<textField>
+							<reportElement x="0" y="0" width="25" height="30" uuid="ed0cf72f-db08-48bb-8d0b-edc9f89092ed"/>
+							<textFieldExpression><![CDATA[$F{id}]]></textFieldExpression>
+						</textField>
+						<textField>
+							<reportElement x="25" y="0" width="25" height="30" uuid="66e0c434-a5f9-4c5b-b9ea-79d9c15fc5c6"/>
+							<textFieldExpression><![CDATA[$F{exchangeId}]]></textFieldExpression>
+						</textField>
+						<textField>
+							<reportElement x="50" y="0" width="25" height="30" uuid="049a2719-96fb-474e-9024-1ae47cd1700c"/>
+							<textFieldExpression><![CDATA[$F{companyId}]]></textFieldExpression>
+						</textField>
+						<textField>
+							<reportElement x="75" y="0" width="25" height="30" uuid="466aeb1a-248d-4e8a-8c4e-7b86d118ada8"/>
+							<textFieldExpression><![CDATA[$F{exchangeSname}]]></textFieldExpression>
+						</textField>
+					</jr:listContents>
+				</jr:list>
+			</componentElement>
+		</band>
+	</detail>
+</jasperReport>
